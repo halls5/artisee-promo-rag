@@ -3,7 +3,7 @@ from openai import OpenAI
 
 from rag.db_loader import load_all_dbs
 from rag.retrievers import create_retrievers
-from rag.context_chain import build_chain
+#from rag.context_chain import build_chain
 from langchain_openai import ChatOpenAI
 from rag.graph_chain import build_rag_graph
 
@@ -383,3 +383,7 @@ if len(messages) > 0 and messages[-1]["role"] == "user":
 
     st.rerun()
 
+import streamlit as st
+import os
+
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
