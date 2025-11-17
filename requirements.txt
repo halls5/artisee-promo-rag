@@ -3,7 +3,7 @@ pandas==2.3.3
 matplotlib==3.10.7
 joblib==1.5.2
 langchain==0.3.27
-langgraph==1.0.3
+langgraph
 chromadb==0.6.3
 openai==1.109.1
 tiktoken==0.12.0
