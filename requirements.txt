@@ -4,8 +4,9 @@ numpy==1.26.4
 matplotlib==3.10.7
 joblib==1.5.2
 langchain==0.3.27
-langgraph
+langgraph==1.0.3
 chromadb==0.6.3
 openai==1.109.1
 tiktoken==0.12.0
 langchain-core==0.3.79
+langchain-community==0.3.31
