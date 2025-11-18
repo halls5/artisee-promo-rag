@@ -7,7 +7,8 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 def pick_best_region(region, db_region):
     """상위 지역(인천/수원 등)을 DB 안의 실제 지역명으로 자동 매핑"""
-
+    if region is None:
+        return None
 
     collection = db_region._collection.get()
     all_regions = [
@@ -30,33 +31,77 @@ def pick_best_region(region, db_region):
     return region
 
 
+import re
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
 
+###############################################
+# 1) 서울 구 자동 정규화 딕셔너리
+###############################################
+SEOUL_DISTRICTS = [
+    "강남구", "서초구", "송파구", "광진구", "강동구", "중구", "용산구", "종로구",
+    "마포구", "서대문구", "영등포구", "동대문구", "양천구", "동작구", "강서구"
+]
+
+def normalize_seoul(region: str):
+    """ '서울 강남구', '서울시 강남' → '강남구' 로만 반환 """
+    if region is None:
+        return None
+    for dist in SEOUL_DISTRICTS:
+        # 강남, 서초 등 '구' 생략된 형태도 잡음
+        if dist.replace("구", "") in region:
+            return dist
+    return region
+
+
+###############################################
+# 2) LLM 출력 파싱용 정규식 개선 (":", "=", 공백, 따옴표 전부 허용)
+###############################################
+def parse_region_market_from_response(response: str):
+    region_match = re.search(r"region\s*[:=]\s*[\"']?([\w가-힣\s]+)[\"']?", response)
+    market_match = re.search(r"market_type\s*[:=]\s*[\"']?([\w가-힣\s\(\)]+)[\"']?", response)
+
+    region = region_match.group(1).strip() if region_match else None
+    market = market_match.group(1).strip() if market_match else None
+
+    return region, market
+
+
+
+
+
+###############################################
+# 4) 메인 함수 — LLM → 정규화 → 벡터DB 매핑까지
+###############################################
 def extract_region_market(question):
     prompt = f"""
-    질문 문장에서 지역명과 상권명을 정확히 추출해줘.
+    아래 질문에서 '지역명'과 '상권명'을 정확히 추출해줘.
 
     지역 추출 규칙:
     - 'OO구', 'OO시', 'OO', 'OO광역시' 모두 인정
-    - '대구', '인천', '고양'처럼 시 단위면 해당 시의 대표 구로 해석
-    - 대구광역시 → 대구 북구
-    - 인천광역시 → 인천 연수구
+    - '서울 강남구' → '강남구'
+    - '서울시 강남구' → '강남구'
+    - '대구', '인천'처럼 시 단위면 대표 구로 해석
+      * 대구광역시 → 대구 북구
+      * 인천광역시 → 인천 연수구
 
-    출력:
-    region=<지역명>, market_type=<상권명>
+    출력 형식은 아래만 사용해:
+    region=<지역명>
+    market_type=<상권명>
 
     질문: {question}
     """
+
     response = llm.invoke(prompt).content
-    
-    region_match = re.search(r"region=([\w가-힣\s]+)", response)
-    market_match = re.search(r"market_type=([\w가-힣\s\(\)]+)", response)
 
-    region = region_match.group(1).strip() if region_match else None
-    market_type = market_match.group(1).strip() if market_match else None
+    # ① region / market 파싱
+    region, market_type = parse_region_market_from_response(response)
 
-    # region 자동 매핑(인천 → 인천 연수구)
+    # ② 서울 구 자동 정규화
+    region = normalize_seoul(region)
+
+    # ③ Vector DB 기반 최종 매칭
     emb = OpenAIEmbeddings(model="text-embedding-3-large")
-
     db_region = Chroma(
         persist_directory="./rag_region6",
         embedding_function=emb
@@ -67,24 +112,36 @@ def extract_region_market(question):
 
 # def extract_region_market(question):
 #     prompt = f"""
-#     다음 문장에서 지역명과 상권명을 정확히 추출해줘.
+#     질문 문장에서 지역명과 상권명을 정확히 추출해줘.
 
-#  지역 추출 규칙:
-# - 'OO구', 'OO시', 'OO광역시' 모두 지역으로 인정
-# - '강남', '서초', '수원', '대구'처럼 끝에 행정구역이 없어도 
-#   실제 존재하는 지역으로 보정해서 반환
-#   예: 강남 → 강남구, 대구 → 대구 북구
-# - 문장에 '대구 북구'처럼 더 구체적인 지역이 있으면 그걸 우선 선택
-# '상권명(예: 오피스상권, 병원상권, 주택가상권, 복합상권, 쇼핑몰상권, 위탁점포)'을 각각 추출해줘.
-# 존재하지 않으면 None으로 표시해.
-# 질문: {question}
-# 출력형식: region=<지역명>, market_type=<상권명>
-# """
+#     지역 추출 규칙:
+#     - 'OO구', 'OO시', 'OO', 'OO광역시' 모두 인정
+#     - '대구', '인천', '고양'처럼 시 단위면 해당 시의 대표 구로 해석
+#     - 대구광역시 → 대구 북구
+#     - 인천광역시 → 인천 연수구
+
+#     출력:
+#     region=<지역명>, market_type=<상권명>
+
+#     질문: {question}
+#     """
 #     response = llm.invoke(prompt).content
+    
 #     region_match = re.search(r"region=([\w가-힣\s]+)", response)
 #     market_match = re.search(r"market_type=([\w가-힣\s\(\)]+)", response)
 
-#     region = region_match.group(1) if region_match else None
-#     market_type = market_match.group(1) if market_match else None
-    
+#     region = region_match.group(1).strip() if region_match else None
+#     market_type = market_match.group(1).strip() if market_match else None
+
+#     # region 자동 매핑(인천 → 인천 연수구)
+#     emb = OpenAIEmbeddings(model="text-embedding-3-large")
+
+#     db_region = Chroma(
+#         persist_directory="./rag_region6",
+#         embedding_function=emb
+#     )
+#     region = pick_best_region(region, db_region)
+
 #     return region, market_type
+
+#     - 서울시 안에 강남구, 서초구, 송파구, 광진구, 강동구, 중구, 용산구, 종로구, 마포구, 서대문구, 영등포구, 동대문구, 양천구, 동작구, 강서구, 종로구가 포함되어 있음.
