@@ -91,13 +91,6 @@ body, .stApp {
     background-color: #f7f3ee !important;
 }
 
-/* 사이드바 전체 폭 조절 */
-[data-testid="stSidebar"] {
-    width: 240px !important;         /* 원하는 너비 */
-    min-width: 240px !important;
-    max-width: 240px !important;
-}
-
 /* ===== Left Sidebar ===== */
 .sidebar-title {
     font-size: 20px;
@@ -115,8 +108,6 @@ body, .stApp {
 .chat-history-item:hover {
     background-color: #e2d6cd;
 }
-
-
 
 /* ===== Chat Area ===== */
 .chat-bubble {
@@ -169,23 +160,13 @@ body, .stApp {
 # LEFT SIDEBAR: 대화 목록
 # =========================================
 from pathlib import Path
-import base64
 
 # 로고 경로
 LOGO_PATH = Path(__file__).resolve().parent / "아티제로고.png"
 
-# 사이드바 로고
 with st.sidebar:
-    st.markdown(
-        f"""
-        <div style='text-align:center; padding-top:10px; padding-bottom:5px;'>
-            <img src='data:image/png;base64,{base64.b64encode(open(LOGO_PATH,"rb").read()).decode()}' 
-                 style='width:50%; border-radius:2px;'/>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-st.sidebar.markdown("<hr>", unsafe_allow_html=True)
+    st.image(str(LOGO_PATH), use_column_width=True)
+    st.markdown("## ")  # 아래와 간격 조정
 
 st.sidebar.markdown("<div class='sidebar-title'>💬 대화 목록</div>", unsafe_allow_html=True)
 
@@ -220,9 +201,8 @@ for session_id, msgs in st.session_state.chat_sessions.items():
     if st.sidebar.button(f"💭 {title}"):
         st.session_state.current_session = session_id
         st.rerun()
-st.sidebar.markdown("<hr>", unsafe_allow_html=True)
 
-st.sidebar.markdown("### 모드 선택")
+st.sidebar.markdown("### 🔧 모드 선택")
 
 # debug_mode = st.sidebar.radio(
 #     "출력 모드",
@@ -238,9 +218,7 @@ debug_mode = st.sidebar.radio(
     ],
     format_func=lambda x: "💬 일반 모드" if x=="answer" else "🧪 디버그 모드"
 )
-st.sidebar.markdown("<hr>", unsafe_allow_html=True)
 
-#st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
 
 
 
@@ -262,7 +240,7 @@ st.markdown(
 if "mode" not in st.session_state:
     st.session_state["mode"] = "chat"
 
-#st.sidebar.markdown("### 기능 메뉴")
+st.sidebar.markdown("### 🗺️ 기능 메뉴")
 if st.sidebar.button("📍 전국 아티제 매장 분포"):
     st.session_state["mode"] = "store_map"
     st.rerun()
@@ -270,7 +248,7 @@ if st.sidebar.button("📍 전국 아티제 매장 분포"):
 
 if st.session_state["mode"] == "store_map":
     # 지도 or 분포도 렌더링
-    st.subheader("📍 전국 아티제 매장 분포")
+    st.title("📍 전국 아티제 매장 분포")
 
     st.image("./지역별 상권 개수.png")
     st.markdown("---")
@@ -285,8 +263,8 @@ if st.session_state["mode"] == "store_map":
 # ===============================
 # MAIN CHAT WINDOW - 챗봇 모드
 DEFAULT_GREETING = """
-안녕하세요! 아티제 AI 프로모션 컨설턴트입니다. \n
-마케팅 및 프로모션 전략에 대해 무엇이든 물어보세요.😀
+안녕하세요! 
+
 """
 
 # 현재 대화 불러오기
@@ -300,57 +278,28 @@ messages = st.session_state.chat_sessions[session]
 if len(messages) == 0:
     messages.append({"role": "assistant", "content": DEFAULT_GREETING})
 
-# # 메시지 렌더링 함수
-# def render_message(role, content):
-#     if role == "assistant":
-#         st.markdown(
-#             f"""
-#             <div class="ai-row">
-#                 <div class="ai-icon">🤖</div>
-#                 <div class="chat-bubble ai-bubble">{content}</div>
-#             </div>
-#             """,
-#             unsafe_allow_html=True
-#         )
-#     else:
-#         st.markdown(
-#             f"""
-#             <div class="user-row">
-#                 <div class="chat-bubble user-bubble">{content}</div>
-#                 <div class="user-icon">🧑</div>
-#             </div>
-#             """,
-#             unsafe_allow_html=True
-#         )
-from markdown2 import markdown
-
+# 메시지 렌더링 함수
 def render_message(role, content):
     if role == "assistant":
-        # Markdown → HTML 변환
-        html_content = markdown(content)
-
         st.markdown(
             f"""
             <div class="ai-row">
                 <div class="ai-icon">🤖</div>
-                <div class="chat-bubble ai-bubble">
-                    {html_content}
-            """,
-            unsafe_allow_html=True
-        )
-
-    else:
-        # user message 그대로
-        st.markdown(
-            f"""
-            <div class="user-row">
-                <div class="chat-bubble user-bubble">{content}</div>
-                <div class="user-icon">👤</div>
+                <div class="chat-bubble ai-bubble">{content}</div>
             </div>
             """,
             unsafe_allow_html=True
         )
-
+    else:
+        st.markdown(
+            f"""
+            <div class="user-row">
+                <div class="chat-bubble user-bubble">{content}</div>
+                <div class="user-icon">🧑</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 
 # 기존 메시지 표시
@@ -429,12 +378,14 @@ if len(messages) > 0 and messages[-1]["role"] == "user":
         st.stop()  # 🔥 매우 중요! rerun 방지 → JSON 유지
 
     # 🎯 일반 모드
-    ai_answer = "\n" + rag_result.get("answer", "")
+    ai_answer = rag_result.get("answer", "")
 
 
     # 로딩 문구 제거
     loading.empty()
 
+    # Streaming 방식 출력
+    #placeholder = stream_ai_message(ai_answer)
 
     # 완료 후 메시지 저장
     messages.append({"role": "assistant", "content": ai_answer})
