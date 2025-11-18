@@ -5,6 +5,43 @@ from langchain_openai import OpenAIEmbeddings
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
+MARKET_TYPES = {
+    "오피스": "오피스상권",
+    "오피스 상권": "오피스상권",
+    "오피스형": "오피스상권",
+
+    "복합": "복합상권",
+    "복합 상권": "복합상권",
+
+    "쇼핑몰": "쇼핑몰상권",
+    "쇼핑몰 상권": "쇼핑몰상권",
+    "몰": "쇼핑몰상권",
+    "몰 상권": "쇼핑몰상권",
+    "쇼핑센터": "쇼핑몰상권",
+
+    "주택가": "주택가상권",
+    "주택가 상권": "주택가상권",
+
+    "병원": "병원상권",
+    "병원 상권": "병원상권",
+
+    "위탁": "위탁상권",
+    "위탁 상권": "위탁상권",
+}
+
+def normalize_market_type(market_type: str):
+    if market_type is None:
+        return None
+
+    # 띄어쓰기 지우기 전 후로 체크 가능
+    cleaned = market_type.replace(" ", "").replace("상권", "")
+    
+    for key, value in MARKET_TYPES.items():
+        if key.replace(" ", "").replace("상권", "") in cleaned:
+            return value
+
+    return market_type  # fallback
+
 def pick_best_region(region, db_region):
     """상위 지역(인천/수원 등)을 DB 안의 실제 지역명으로 자동 매핑"""
     if region is None:
@@ -107,6 +144,9 @@ def extract_region_market(question):
         embedding_function=emb
     )
     region = pick_best_region(region, db_region)
+
+    # ③ market_type 정규화 (🔥 여기 추가)
+    market_type = normalize_market_type(market_type)
 
     return region, market_type
 
