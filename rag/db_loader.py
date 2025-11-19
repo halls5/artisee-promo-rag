@@ -10,17 +10,17 @@ def load_all_dbs():
     )
 
     db_market = Chroma(
-        persist_directory="./rag_market9",
+        persist_directory="./rag_market",
         embedding_function=embeddings
     )
 
     db_artisee = Chroma(
-        persist_directory="./rag_artisee_info",
+        persist_directory="./rag_artisee_info2",
         embedding_function=embeddings
     )
 
     db_promo = Chroma(
-        persist_directory="./rag_promo",
+        persist_directory="./rag_promo2",
         embedding_function=embeddings
     )
 
