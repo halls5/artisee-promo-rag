@@ -194,8 +194,34 @@ if "chat_sessions" not in st.session_state:
 if "current_session" not in st.session_state:
     st.session_state.current_session = "default"
 
+# # 새 대화 버튼
+# if st.sidebar.button("➕ 새 대화"):
+#     new_id = f"chat_{len(st.session_state.chat_sessions)+1}"
+#     st.session_state.chat_sessions[new_id] = []
+#     st.session_state.current_session = new_id
+#     st.rerun()
+
+
+# # 기존 대화 목록 버튼 (제목 = 첫 사용자 메시지 앞 10글자)
+# for session_id, msgs in st.session_state.chat_sessions.items():
+
+#     # 제목 추출
+#     if len(msgs) > 0:
+#         # 첫 user 메시지를 찾아 제목 생성
+#         first_user_msg = next(
+#             (m["content"] for m in msgs if m["role"] == "user"),
+#             "새 대화"
+#         )
+#         title = first_user_msg[:10]  # 앞 10글자
+#     else:
+#         title = "새 대화"
+
+#     # 버튼 만들기
+#     if st.sidebar.button(f"💭 {title}"):
+#         st.session_state.current_session = session_id
+#         st.rerun()
 # 새 대화 버튼
-if st.sidebar.button("➕ 새 대화"):
+if st.sidebar.button("➕ 새 대화", key="new_chat_btn"):
     new_id = f"chat_{len(st.session_state.chat_sessions)+1}"
     st.session_state.chat_sessions[new_id] = []
     st.session_state.current_session = new_id
@@ -203,23 +229,23 @@ if st.sidebar.button("➕ 새 대화"):
 
 
 # 기존 대화 목록 버튼 (제목 = 첫 사용자 메시지 앞 10글자)
-for session_id, msgs in st.session_state.chat_sessions.items():
+for idx, (session_id, msgs) in enumerate(st.session_state.chat_sessions.items()):
 
     # 제목 추출
     if len(msgs) > 0:
-        # 첫 user 메시지를 찾아 제목 생성
         first_user_msg = next(
             (m["content"] for m in msgs if m["role"] == "user"),
             "새 대화"
         )
-        title = first_user_msg[:10]  # 앞 10글자
+        title = first_user_msg[:10]
     else:
         title = "새 대화"
 
-    # 버튼 만들기
-    if st.sidebar.button(f"💭 {title}"):
+    # 버튼 고유 key 반드시 부여!!
+    if st.sidebar.button(f"💭 {title}", key=f"session_btn_{idx}"):
         st.session_state.current_session = session_id
         st.rerun()
+
 st.sidebar.markdown("<hr>", unsafe_allow_html=True)
 
 st.sidebar.markdown("### 모드 선택")
